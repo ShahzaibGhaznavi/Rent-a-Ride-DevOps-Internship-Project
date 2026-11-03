@@ -1,135 +1,297 @@
-
 # Rent a Ride
 
-This repository contains the code for a Full stack car rental website with 3 modules User,Admin,Vendor . The project is divided into Client  and  backend 
+A full-stack car rental platform with three modules: **User, Admin, and Vendor**. The application allows users to browse and book vehicles, vendors to manage vehicle listings, and administrators to manage bookings, users, and vendors.
 
+The project is divided into two main parts:
 
-## Installation
+- `client/` – Frontend application
+- `backend/` – Backend application code
 
-Clone Rent a Ride
+## Table of Contents
 
-```bash
-https://github.com/jeevan-aj/Rent-a-Ride.git
+- [Project Overview](#project-overview)
+- [Features and Modules](#features-and-modules)
+- [Technology Stack](#technology-stack)
+- [Project Structure](#project-structure)
+- [Installation and Setup](#installation-and-setup)
+- [Environment Configuration](#environment-configuration)
+- [DevOps Improvements](#devops-improvements)
+- [Screenshots](#screenshots)
+
+## Project Overview
+
+Rent a Ride is a full-scale car rental platform designed to provide a seamless vehicle booking and management experience.
+
+The application supports three different roles:
+
+- **Users:** Browse available vehicles, manage profiles, and book vehicles.
+- **Admins:** Manage bookings, users, vendors, and vehicle listings.
+- **Vendors:** Register, list vehicles, and receive booking updates.
+
+## Features and Modules
+
+### 1. User Module
+
+- **View and Book Vehicles:** Browse available vehicles and book them online.
+- **Profile Management:** View and update profile information and account settings.
+- **Order Management:** View past and upcoming bookings.
+- **Account Management:** Sign up, sign in, and manage account access.
+- **Email Notifications:** Receive booking confirmation emails with order details.
+
+### 2. Admin Module
+
+- **Booking Management:** View and manage bookings, including booking details and statuses.
+- **Vendor Management:** Review, approve, reject, or remove vendors.
+- **Vehicle Management:** View, update, and delete vehicle listings.
+- **User Management:** Manage and remove users from the platform.
+
+### 3. Vendor Module
+
+- **Registration and Login:** Separate sign-up and sign-in functionality for vendors.
+- **Vehicle Listing:** Add vehicles for admin approval.
+- **Vehicle Management:** Manage submitted vehicle listings.
+- **Order Notifications:** Receive updates when users book listed vehicles.
+
+## Technology Stack
+
+| Component | Technologies |
+|---|---|
+| Frontend | React.js, JavaScript, Vite |
+| State Management | Redux Toolkit |
+| UI and Styling | Material UI, Tailwind CSS |
+| Form Validation | React Hook Form, Zod |
+| Backend | Node.js, Express.js |
+| Database | MongoDB |
+| Authentication | JWT, Google OAuth |
+| Payments | Razorpay |
+| File Uploads | Multer |
+| Media Storage | Cloudinary |
+| Email Service | Nodemailer |
+| Web Server | Nginx |
+| Process Management | PM2 |
+| Cloud Platform | AWS EC2 |
+| DNS Management | Cloudflare |
+
+## Project Structure
+
+```text
+Rent-a-Ride/
+│
+├── backend/
+│   ├── controllers/
+│   ├── models/
+│   ├── routes/
+│   ├── services/
+│   ├── utils/
+│   └── server.js
+│
+├── client/
+│   ├── src/
+│   ├── public/
+│   ├── package.json
+│   └── vite.config.js
+│
+├── docs/
+│   └── troubleshooting.md
+│
+├── .env.example
+├── .gitignore
+├── package.json
+└── README.md
 ```
 
-Install node modules
+## Installation and Setup
+
+### Prerequisites
+
+Make sure the following tools are installed:
+
+- Node.js and npm
+- Git
+- MongoDB connection
+- Required service credentials for integrations such as Cloudinary, Razorpay, and email
+
+### 1. Clone the Repository
 
 ```bash
-  cd backend
-  npm install
-  npm run dev
+git clone https://github.com/ShahzaibGhaznavi/Rent-a-Ride-DevOps-Internship-Project.git
+
+cd Rent-a-Ride-DevOps-Internship-Project
 ```
+
+### 2. Install Backend Dependencies
+
+The backend `package.json` is located in the project root directory.
+
 ```bash
-  cd client
-  npm install
-  npm run dev
+npm install
 ```
 
-    
-## Tech Stack
+### 3. Configure Backend Environment Variables
 
-**Client:** React, Javascript, Redux Toolkit, Material Ui, TailwindCSS, React Toast 
+Create your local backend environment file:
 
-**Server:** Express.js, Mongodb, Cloudinary, Nodemailer , Multer
+```bash
+cp .env.example .env
+```
 
-**Deployed frontend and backend  On AWS ec2, Nginx as Reverse Proxy ,Cloudflare as Dns resolver ,Used Pm2 for uptime**
+Update `.env` with your own valid credentials.
 
+### 4. Start the Backend
 
-## Project Description
-A full-scale Car Rental Platform with user, admin, and vendor modules, designed to offer seamless vehicle booking, management, and administration. The platform is developed using modern technologies to ensure smooth and efficient operations, catering to different user roles with distinct functionalities.
+From the project root directory:
 
-##
+```bash
+npm run dev
+```
 
-**Key Features & Modules:**
+### 5. Install Frontend Dependencies
 
-**User Module:**
+Open a second terminal:
 
-* View and Book Vehicles: Users can view available vehicles and book them online.
-* Profile Management: Users can view and edit their profiles, as well as manage their account settings.
-* Order Management: View past and upcoming orders; users can only access their own bookings.
-* Account Management: Users can sign up, sign in, delete their account, and sign out seamlessly.
-* Email Notifications: After booking a vehicle, users receive an email with order details.
+```bash
+cd client
 
-**Admin Module:**
+npm install
+```
 
-* Booking Management: Admins can view and manage bookings, including booking details and statuses.
+### 6. Configure Frontend Environment Variables
 
-* Vendor Management: View and approve/reject vendors, as well as remove vendors from the platform.
+```bash
+cp .env.example .env
+```
 
-* Vehicle Management: Admins can view, update, and delete vehicle listings.
+Update the frontend environment variables with the required values.
 
-* User Management: Admins have the ability to remove users from the platform.
+### 7. Start the Frontend
 
-**Vendor Module:**
+```bash
+npm run dev
+```
 
-* Sign Up and Sign In: Separate sign-up and sign-in flow for vendors.
+The frontend and backend will run in separate terminals. Use the local URLs displayed by the development servers.
 
-* Vehicle Listing: Vendors can add their vehicles to the platform for approval by the admin. Approved vehicles will be listed on the site.
+## Environment Configuration
 
-* Order Notifications: Vendors receive updates on orders when users book their vehicles.
+The project requires environment variables for database connectivity, authentication, payments, email services, and third-party integrations.
 
-##
+### Backend Environment Variables
 
-**Technology Stack:**
+The root `.env.example` provides the backend configuration template.
 
-**Frontend:** React.js (with Vite), Redux Toolkit, Tailwind CSS, React Hook Form, Zod for form validation, Google OAuth, Razorpay for payment processing.
+```env
+mongo_uri=mongodb_connection_string
+ACCESS_TOKEN=your_access_token
+REFRESH_TOKEN=your_refresh_token
+RAZORPAY_KEY_ID=your_razorpay_key_id
+RAZORPAY_SECRET=your_razorpay_secret
+EMAIL_HOST=your_email
+EMAIL_PASSWORD=your_email_password
+CLOUD_NAME=your_cloudinary_cloud_name
+API_KEY=your_cloudinary_api_key
+API_SECRET=your_cloudinary_api_secret
+```
 
-**Backend:** Node.js, Express.js, MongoDB, Multer for handling multipart form data, Nodemailer for sending emails, Cloudinary for media storage, MVC architecture, JWT with access and refresh tokens, Protected routes, Role-based access control.
+### Frontend Environment Variables
 
-**Database:** MongoDB with aggregation pipelines, referencing models, and optimized storage solutions.
+The `client/.env.example` file provides the frontend configuration template.
 
-**Deployment:** Deployed on AWS EC2, utilizing Nginx as a reverse proxy, and Cloudflare for DNS management.
+```env
+VITE_FIREBASE_API_KEY=your_firebase_api_key
+VITE_PRODUCTION_BACKEND_URL=http://localhost:3000
+VITE_RAZORPAY_KEY_ID=your_razorpay_key_id
+```
 
-##
+**Important Security Notes:**
 
-**Features & Implementations:**
+- Never commit actual `.env` files to Git.
+- Never expose passwords, API secrets, database credentials, or private keys.
+- Only public configuration values should be exposed to frontend code.
+- Razorpay Secret must remain on the backend.
+- Use `.env.example` files as templates rather than storing real credentials in the repository.
 
-* JWT Authentication: Integrated JWT access and refresh tokens to secure user, admin, and vendor login flows.
+## Features and Implementations
 
-* Role-Based Access: Implemented protected routes and role-based access to restrict access based on user roles (Admin, User, Vendor).
+- **JWT Authentication:** Access and refresh tokens are used for authentication.
+- **Role-Based Access Control:** Protected routes restrict access based on User, Admin, and Vendor roles.
+- **Dynamic Location Selector:** Pickup and drop-off options update according to the selected location.
+- **Search, Sort, and Filter:** Vehicle browsing functionality supports searching, sorting, and filtering.
+- **Form Validation:** React Hook Form and Zod provide form validation.
+- **Google OAuth:** Supports Google-based sign-up and sign-in.
+- **Email Notifications:** Nodemailer handles booking-related email notifications.
+- **Cloudinary Integration:** Cloudinary is used for image and video storage.
+- **MongoDB:** Database models and referencing are used to organize application data.
+- **Multer:** Handles vehicle image and video uploads.
+- **Version Control:** Git is used for source code management and collaboration.
 
-* Dynamic Location Selector: The location picker dynamically updates pickup and drop-off options based on user location selection.
+## DevOps Improvements
 
-* Search, Sort, Filter Functionality: Enhanced search, filter, and sort capabilities for seamless vehicle browsing and booking.
+The repository has been prepared for DevOps internship practice, with a focus on Git workflow, repository management, application configuration, and documentation.
 
-* UI Development: Built most of the UI from scratch, including dynamic form validations using Zod and React Hook Form.
+The following improvements have been made:
 
-* Google OAuth: Integrated Google OAuth for quick and secure sign-up/sign-in functionality.
+- **Private Repository Setup:** Maintained an independent private GitHub repository for internship work.
+- **Gitflow Branching Strategy:** Created `main`, `dev`, `stg`, and `feature/shahzaib-azeem` branches.
+- **Environment Templates:** Added `.env.example` files for backend and frontend configuration.
+- **Frontend Configuration Fix:** Updated the Razorpay frontend environment variable to use Vite's required `VITE_` prefix.
+- **Git Ignore Cleanup:** Removed duplicate `package-lock.json` ignore entries so dependency lockfiles can be tracked.
+- **Documentation:** Updated installation instructions and documented setup and troubleshooting steps.
 
-* Email Notifications: Implemented automated email notifications for vehicle booking confirmations using Nodemailer.
+### Git Branching Strategy
 
-* Cloudinary Integration: Used Cloudinary to handle image and video storage, reducing the database load by optimizing media assets.
+```text
+main
+  |
+  └── stg
+        |
+        └── dev
+              |
+              └── feature/shahzaib-azeem
+```
 
-* MongoDB: Used four main models to take advantage of MongoDB’s referencing functionality, improving data organization and retrieval efficiency.
+Feature development is carried out on the feature branch, followed by a Pull Request to `dev`.
 
-* Multer: Utilized Multer to handle file uploads for vehicles, including images and videos.
+## Deployment
 
-* Version Control: Employed Git throughout the project for version control, collaboration, and backup.
+The original application deployment architecture uses:
+
+- **AWS EC2:** Application hosting.
+- **Nginx:** Reverse proxy.
+- **Cloudflare:** DNS management.
+- **PM2:** Node.js process management.
+
+Deployment configuration and credentials should be maintained separately from the source code.
+
 ## Screenshots
 
-//user
-<img width="1440" alt="Screenshot 2024-04-06 at 3 06 32 PM" src="https://github.com/user-attachments/assets/4b769f7d-5d2c-43a7-8283-07fa8402de92">
-<img width="1430" alt="Screenshot 2024-12-10 at 12 35 41 AM" src="https://github.com/user-attachments/assets/5d6e0160-5f1d-4e67-a64e-1e18fb17a590">
-<img width="1425" alt="Screenshot 2024-12-10 at 12 35 58 AM" src="https://github.com/user-attachments/assets/ac6b0f33-344e-4009-a979-23ea7dc3a5bb">
-<img width="1430" alt="Screenshot 2024-12-10 at 12 36 15 AM" src="https://github.com/user-attachments/assets/40e2dc7d-0694-483d-bf4a-badac9c4d5f3">
-<img width="1426" alt="Screenshot 2024-12-10 at 12 36 28 AM" src="https://github.com/user-attachments/assets/7ce5d1fa-c51f-414b-92da-cc04ac7c3402">
-<img width="1428" alt="Screenshot 2024-12-10 at 1 59 45 AM" src="https://github.com/user-attachments/assets/0e87009c-832d-4c5e-be7c-ecd4df341070">
-<img width="1408" alt="Screenshot 2024-12-10 at 2 00 01 AM" src="https://github.com/user-attachments/assets/baf15b5d-2e04-4410-803b-527dddda1aab">
+### User Module
 
+![User Screenshot 1](https://github.com/user-attachments/assets/4b769f7d-5d2c-43a7-8283-07fa8402de92)
 
-//Admin
-<img width="1418" alt="Screenshot 2024-12-10 at 2 01 09 AM" src="https://github.com/user-attachments/assets/c08e3bf0-2776-4236-80b6-6714d52ec8d7">
-<img width="1421" alt="Screenshot 2024-12-10 at 2 04 29 AM" src="https://github.com/user-attachments/assets/ce6dada8-41b7-4aec-b86a-4a359f6d339f">
-<img width="1431" alt="Screenshot 2024-12-10 at 2 04 42 AM" src="https://github.com/user-attachments/assets/467503a4-ab9a-4396-bc57-1abff5fe8106">
-<img width="1418" alt="Screenshot 2024-12-10 at 2 05 02 AM" src="https://github.com/user-attachments/assets/8e1d2948-6316-420b-8336-30ec7c752b04">
+![User Screenshot 2](https://github.com/user-attachments/assets/5d6e0160-5f1d-4e67-a64e-1e18fb17a590)
 
+![User Screenshot 3](https://github.com/user-attachments/assets/ac6b0f33-344e-4009-a979-23ea7dc3a5bb)
 
-//vendor
-<img width="1418" alt="Screenshot 2024-12-10 at 2 05 02 AM" src="https://github.com/user-attachments/assets/59a9a9c7-5dc1-4f61-8d15-43266579386c">
-<img width="1432" alt="Screenshot 2024-12-10 at 2 08 00 AM" src="https://github.com/user-attachments/assets/4e9d8f66-0984-4163-8dea-f9023db56ce0">
+![User Screenshot 4](https://github.com/user-attachments/assets/40e2dc7d-0694-483d-bf4a-badac9c4d5f3)
 
+![User Screenshot 5](https://github.com/user-attachments/assets/7ce5d1fa-c51f-414b-92da-cc04ac7c3402)
 
+![User Screenshot 6](https://github.com/user-attachments/assets/0e87009c-832d-4c5e-be7c-ecd4df341070)
 
+![User Screenshot 7](https://github.com/user-attachments/assets/baf15b5d-2e04-4410-803b-527dddda1aab)
 
+### Admin Module
 
+![Admin Screenshot 1](https://github.com/user-attachments/assets/c08e3bf0-2776-4236-80b6-6714d52ec8d7)
 
+![Admin Screenshot 2](https://github.com/user-attachments/assets/ce6dada8-41b7-4aec-b86a-4a359f6d339f)
+
+![Admin Screenshot 3](https://github.com/user-attachments/assets/467503a4-ab9a-4396-bc57-1abff5fe8106)
+
+![Admin Screenshot 4](https://github.com/user-attachments/assets/8e1d2948-6316-420b-8336-30ec7c752b04)
+
+### Vendor Module
+
+![Vendor Screenshot 1](https://github.com/user-attachments/assets/59a9a9c7-5dc1-4f61-8d15-43266579386c)
+
+![Vendor Screenshot 2](https://github.com/user-attachments/assets/4e9d8f66-0984-4163-8dea-f9023db56ce0)
