@@ -1,0 +1,15 @@
+node_modules
+client/node_modules
+client/dist
+.git
+.env
+client/.env
+**/.env
+**/.env.*
+!**/.env.example
+npm-debug.log
+# Database backups and temporary import scripts
+vehicles-backup.json
+masterdatas-backup.json
+import-vehicles.js
+import-masterdata.js

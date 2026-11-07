@@ -26,3 +26,13 @@ dist-ssr
 *.sln
 *.sw?
 
+
+# Database backups and temporary import scripts
+vehicles-backup.json
+masterdatas-backup.json
+import-vehicles.js
+import-masterdata.js
+
+# Local seed generator (requires excluded database backups)
+scripts/generate-mongo-seed.cjs
+
