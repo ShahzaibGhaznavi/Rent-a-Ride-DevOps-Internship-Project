@@ -15,8 +15,11 @@ The project is divided into two main parts:
 - [Project Structure](#project-structure)
 - [Installation and Setup](#installation-and-setup)
 - [Environment Configuration](#environment-configuration)
+- [Features and Implementations](#features-and-implementations)
 - [DevOps Improvements](#devops-improvements)
+- [Deployment](#deployment)
 - [Screenshots](#screenshots)
+- [Docker Deployment](#docker-deployment)
 
 ## Project Overview
 
@@ -71,6 +74,7 @@ The application supports three different roles:
 | Process Management | PM2 |
 | Cloud Platform | AWS EC2 |
 | DNS Management | Cloudflare |
+| Containerization | Docker, Docker Compose |
 
 ## Project Structure
 
@@ -83,19 +87,27 @@ Rent-a-Ride/
 │   ├── routes/
 │   ├── services/
 │   ├── utils/
+│   ├── Dockerfile
 │   └── server.js
 │
 ├── client/
 │   ├── src/
 │   ├── public/
+│   ├── Dockerfile
+│   ├── nginx.conf
 │   ├── package.json
 │   └── vite.config.js
 │
 ├── docs/
 │   └── troubleshooting.md
 │
+├── mongo-init/
+│   └── 01-seed.js
+│
+├── .dockerignore
 ├── .env.example
 ├── .gitignore
+├── docker-compose.yml
 ├── package.json
 └── README.md
 ```
@@ -226,7 +238,7 @@ VITE_RAZORPAY_KEY_ID=your_razorpay_key_id
 
 ## DevOps Improvements
 
-The repository has been prepared for DevOps internship practice, with a focus on Git workflow, repository management, application configuration, and documentation.
+The repository has been prepared for DevOps internship practice, with a focus on Git workflow, repository management, application configuration, containerization, and documentation.
 
 The following improvements have been made:
 
@@ -235,18 +247,23 @@ The following improvements have been made:
 - **Environment Templates:** Added `.env.example` files for backend and frontend configuration.
 - **Frontend Configuration Fix:** Updated the Razorpay frontend environment variable to use Vite's required `VITE_` prefix.
 - **Git Ignore Cleanup:** Removed duplicate `package-lock.json` ignore entries so dependency lockfiles can be tracked.
+- **Docker Containerization:** Created Dockerfiles for frontend and backend applications.
+- **Docker Compose:** Configured frontend, backend, and MongoDB services.
+- **Nginx Reverse Proxy:** Configured frontend Nginx to forward API requests to the backend container.
+- **MongoDB Persistence:** Added a named Docker volume to preserve database records.
+- **Database Seed Data:** Added an initialization script for sample vehicles and masterdata.
 - **Documentation:** Updated installation instructions and documented setup and troubleshooting steps.
 
 ### Git Branching Strategy
 
 ```text
 main
-  |
-  └── stg
-        |
-        └── dev
-              |
-              └── feature/shahzaib-azeem
+ |
+ └── stg
+       |
+       └── dev
+             |
+             └── feature/shahzaib-azeem
 ```
 
 Feature development is carried out on the feature branch, followed by a Pull Request to `dev`.
@@ -295,3 +312,86 @@ Deployment configuration and credentials should be maintained separately from th
 ![Vendor Screenshot 1](https://github.com/user-attachments/assets/59a9a9c7-5dc1-4f61-8d15-43266579386c)
 
 ![Vendor Screenshot 2](https://github.com/user-attachments/assets/4e9d8f66-0984-4163-8dea-f9023db56ce0)
+
+## Docker Deployment
+
+The application can be built and run using Docker Compose.
+
+### Architecture
+
+| Service | Technology | Host Port |
+|---|---|---|
+| Frontend | React, Vite, Nginx | 3001 |
+| Backend | Node.js, Express | 3000 |
+| Database | MongoDB 8.0 | 27018 |
+
+### Prerequisites
+
+- Docker Desktop with Docker Compose.
+- Backend environment configuration.
+- Frontend Firebase API key and Razorpay public Key ID, where required.
+
+### Environment Configuration
+
+Create the root environment file:
+
+```bash
+cp .env.example .env
+```
+
+Configure the required backend credentials in `.env`. Set the frontend public configuration values used during the Docker build when required. Never commit actual environment files or private credentials.
+
+### Build and Start Containers
+
+```bash
+docker compose up -d --build
+docker compose ps
+```
+
+### Access the Application
+
+- Frontend: http://localhost:3001
+- Backend API: http://localhost:3000
+- MongoDB: localhost:27018
+
+The frontend Nginx server proxies `/api/` requests to the backend container through the Docker Compose network.
+
+### Database Persistence
+
+MongoDB uses the named Docker volume `mongodb_data` to preserve database records across container recreation.
+
+The `mongo-init/01-seed.js` script initializes a fresh database with five sample vehicles and fifteen masterdata records.
+
+Initialization scripts do not automatically rerun against an existing database volume.
+
+### Useful Docker Commands
+
+View running containers:
+
+```bash
+docker compose ps
+```
+
+View container logs:
+
+```bash
+docker compose logs -f
+```
+
+Restart services:
+
+```bash
+docker compose restart
+```
+
+Stop containers:
+
+```bash
+docker compose down
+```
+
+**Warning:** Avoid `docker compose down -v` during routine cleanup because it deletes the MongoDB volume and its data.
+
+### Troubleshooting
+
+See [Docker and Application Troubleshooting](docs/troubleshooting.md) for container startup, networking, MongoDB persistence, Nginx proxy, API verification, and known limitations.
