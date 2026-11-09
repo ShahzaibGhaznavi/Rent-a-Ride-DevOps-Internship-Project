@@ -193,12 +193,16 @@ The root `.env.example` provides the backend configuration template.
 
 ```env
 mongo_uri=mongodb_connection_string
+
 ACCESS_TOKEN=your_access_token
 REFRESH_TOKEN=your_refresh_token
+
 RAZORPAY_KEY_ID=your_razorpay_key_id
 RAZORPAY_SECRET=your_razorpay_secret
+
 EMAIL_HOST=your_email
 EMAIL_PASSWORD=your_email_password
+
 CLOUD_NAME=your_cloudinary_cloud_name
 API_KEY=your_cloudinary_api_key
 API_SECRET=your_cloudinary_api_secret
@@ -214,7 +218,7 @@ VITE_PRODUCTION_BACKEND_URL=http://localhost:3000
 VITE_RAZORPAY_KEY_ID=your_razorpay_key_id
 ```
 
-**Important Security Notes:**
+### Important Security Notes
 
 - Never commit actual `.env` files to Git.
 - Never expose passwords, API secrets, database credentials, or private keys.
@@ -238,7 +242,7 @@ VITE_RAZORPAY_KEY_ID=your_razorpay_key_id
 
 ## DevOps Improvements
 
-The repository has been prepared for DevOps internship practice, with a focus on Git workflow, repository management, application configuration, containerization, and documentation.
+The repository has been prepared for DevOps internship practice, focusing on Git workflow, repository management, application configuration, containerization, networking, data persistence, and documentation.
 
 The following improvements have been made:
 
@@ -250,9 +254,11 @@ The following improvements have been made:
 - **Docker Containerization:** Created Dockerfiles for frontend and backend applications.
 - **Docker Compose:** Configured frontend, backend, and MongoDB services.
 - **Nginx Reverse Proxy:** Configured frontend Nginx to forward API requests to the backend container.
-- **MongoDB Persistence:** Added a named Docker volume to preserve database records.
+- **MongoDB Persistence:** Configured the named Docker volume `rent-a-ride_mongodb_data` to preserve database records.
+- **Custom Docker Network:** Created a dedicated bridge network named `rent-a-ride-network` for communication between frontend, backend, and MongoDB containers.
+- **Persistence Verification:** Verified MongoDB data persistence by restarting the database container and confirming that existing records remained intact.
 - **Database Seed Data:** Added an initialization script for sample vehicles and masterdata.
-- **Documentation:** Updated installation instructions and documented setup and troubleshooting steps.
+- **Documentation:** Updated installation instructions and documented setup, networking, persistence, and troubleshooting steps.
 
 ### Git Branching Strategy
 
@@ -260,10 +266,10 @@ The following improvements have been made:
 main
  |
  └── stg
-       |
-       └── dev
-             |
-             └── feature/shahzaib-azeem
+      |
+      └── dev
+           |
+           └── feature/shahzaib-azeem
 ```
 
 Feature development is carried out on the feature branch, followed by a Pull Request to `dev`.
@@ -345,24 +351,69 @@ Configure the required backend credentials in `.env`. Set the frontend public co
 
 ```bash
 docker compose up -d --build
+
 docker compose ps
 ```
 
 ### Access the Application
 
-- Frontend: http://localhost:3001
-- Backend API: http://localhost:3000
-- MongoDB: localhost:27018
+- Frontend: [http://localhost:3001](http://localhost:3001)
+- Backend API: [http://localhost:3000](http://localhost:3000)
+- MongoDB: `localhost:27018`
 
 The frontend Nginx server proxies `/api/` requests to the backend container through the Docker Compose network.
 
 ### Database Persistence
 
-MongoDB uses the named Docker volume `mongodb_data` to preserve database records across container recreation.
+MongoDB uses the explicitly named Docker volume `rent-a-ride_mongodb_data`, mounted at `/data/db`, to preserve database records across container restarts and recreation.
+
+The existing volume is reused by Docker Compose to retain previously stored data.
 
 The `mongo-init/01-seed.js` script initializes a fresh database with five sample vehicles and fifteen masterdata records.
 
 Initialization scripts do not automatically rerun against an existing database volume.
+
+### Custom Docker Network
+
+Docker Compose uses a dedicated bridge network named `rent-a-ride-network`.
+
+All three application services are connected to this network:
+
+- Frontend
+- Backend
+- MongoDB
+
+Container communication:
+
+- Backend connects to MongoDB using `mongodb:27017`.
+- Frontend Nginx forwards API requests to `backend:3000`.
+
+Verify the custom network:
+
+```bash
+docker network inspect rent-a-ride-network
+```
+
+The custom bridge network provides container-level network isolation and service connectivity. It does not by itself encrypt network traffic or provide application authentication.
+
+### Data Persistence Verification
+
+MongoDB data persistence was tested by restarting the database container:
+
+```bash
+docker compose restart mongodb
+```
+
+After restarting, the database records remained unchanged:
+
+| Collection | Records |
+|---|---:|
+| vehicles | 5 |
+| users | 1 |
+| masterdatas | 15 |
+| bookings | 0 |
+
+This confirmed that the named Docker volume preserves database records after a container restart.
 
 ### Useful Docker Commands
 
@@ -390,7 +441,19 @@ Stop containers:
 docker compose down
 ```
 
-**Warning:** Avoid `docker compose down -v` during routine cleanup because it deletes the MongoDB volume and its data.
+Inspect the Docker volume:
+
+```bash
+docker volume inspect rent-a-ride_mongodb_data
+```
+
+Inspect the Docker network:
+
+```bash
+docker network inspect rent-a-ride-network
+```
+
+**Warning:** Avoid `docker compose down -v` during routine cleanup because it deletes the Compose-managed MongoDB volume and its data.
 
 ### Troubleshooting
 

@@ -188,6 +188,8 @@ These warnings did not prevent the build from completing. They remain
 documented observations and were not treated as blockers for local
 application testing.
 
+
+
 ## 16. Docker containerization architecture
 
 **Implementation:** Containerized the frontend, backend, and MongoDB using
@@ -366,180 +368,137 @@ database-volume deletion has been approved and the data has been backed up.
 - Actual third-party integrations require valid credentials supplied
   through private environment configuration.
 
-## 16. Docker containerization architecture
 
-**Implementation:** Containerized the frontend, backend, and MongoDB using
-Docker and Docker Compose.
+## 24. Dedicated Docker Network Configuration (Task 4)
 
-Services:
+**Requirement:** Frontend, backend, and MongoDB containers must communicate through a dedicated Docker network.
 
-- **Frontend:** Multi-stage build using Node.js 24 Alpine and Nginx Alpine.
-- **Backend:** Node.js 22 Alpine container.
-- **MongoDB:** MongoDB 8.0 container.
-- **Nginx:** Serves the frontend and proxies `/api/` requests to the backend.
+**Implementation:**
+- Created a custom Docker bridge network named `rent-a-ride-network`.
+- Connected all three Compose services to this network.
+- Backend communicates with MongoDB through the Docker service hostname `mongodb` on port `27017`.
+- Frontend Nginx forwards API requests to the backend service on port `3000`.
 
-Local endpoints:
+**Network configuration:**
 
-| Service | URL / Port |
-|---|---|
-| Frontend | http://localhost:3001 |
-| Backend API | http://localhost:3000 |
-| MongoDB host port | 27018 |
-| MongoDB container port | 27017 |
+```yaml
+networks:
+  rent_a_ride_network:
+    name: rent-a-ride-network
+    driver: bridge
+```
 
-## 17. Docker prerequisites and startup
+**Verification:**
 
-Install Docker Desktop and ensure its Docker Engine is running.
+`docker network inspect rent-a-ride-network`
 
-Create the root environment file from the example if it does not
-already exist:
+All three containers were confirmed connected to the custom network.
 
-`cp .env.example .env`
+**Security note:** The dedicated bridge network provides isolation from unrelated Docker networks. It does not provide encryption by itself; application authentication and secure credentials are still required.
 
-Configure valid backend credentials and the public frontend Firebase
-and Razorpay Key ID values in the environment files.
+## 25. Explicit MongoDB Volume Configuration (Task 4)
 
-Build and start all services from the project root:
+**Requirement:** Database records must survive container restarts and recreation.
 
-`docker compose up -d --build`
+**Implementation:**
+- Configured the named volume `rent-a-ride_mongodb_data`.
+- Mounted the volume at MongoDB's `/data/db` directory.
+- Explicitly assigned the existing volume name in Docker Compose to preserve previously stored database records.
 
-Check container status:
+**Volume configuration:**
 
-`docker compose ps`
+```yaml
+volumes:
+  mongodb_data:
+    name: rent-a-ride_mongodb_data
+```
 
-View service logs:
+**Verification:**
 
-`docker compose logs -f`
+`docker volume inspect rent-a-ride_mongodb_data`
 
-## 18. Docker networking and database connectivity
+The existing volume was successfully reused.
 
-**Issue:** Containers cannot use `localhost` to communicate with other
-services because each container has its own network environment.
+## 26. Docker Network, Application, and Persistence Verification (Task 4)
 
-**Solution:**
-
-- The backend connects to MongoDB using the Compose service hostname
-  `mongodb`.
-- The MongoDB connection inside Docker is
-  `mongodb://mongodb:27017/rent_a_ride`.
-- The frontend Nginx configuration proxies `/api/` requests to
-  `http://backend:3000/api/`.
-- Docker Compose provides service-to-service networking.
-
-The backend's Docker Compose environment overrides the local MongoDB URI
-with the container network URI.
-
-## 19. MongoDB persistent storage and seed data
-
-**Issue:** Database records must remain available when containers are
-recreated.
-
-**Solution:**
-
-- Configured the named Docker volume `mongodb_data` at `/data/db`.
-- Added `mongo-init/01-seed.js` to initialize a fresh database.
-- The seed script inserts five sample vehicles and fifteen masterdata
-  records when their respective collections are empty.
-- Existing collection records are not overwritten by the seed script.
-
-MongoDB data is persisted independently of the MongoDB container.
-
-**Important:** MongoDB initialization scripts run only when the database
-is initialized with an empty data directory. Recreating a container with
-an existing named volume does not automatically rerun these scripts.
-
-Do not use `docker compose down -v` for routine cleanup because it removes
-the Compose-managed named volume and its database data.
-
-## 20. Frontend Nginx reverse proxy
-
-**Issue:** The frontend browser needs to communicate with the backend
-running in a separate container.
-
-**Solution:**
-
-Configured `client/nginx.conf` to:
-
-- Serve the built React application.
-- Support client-side routing using `try_files`.
-- Forward `/api/` requests to the backend service.
-- Preserve the relevant request headers.
-
-The frontend can therefore access backend APIs through the same host
-origin:
-
-`http://localhost:3001/api/`
-
-## 21. Docker verification and API testing
-
-Check the status of all containers:
+**Container status:**
 
 `docker compose ps`
 
-Check MongoDB health:
+- Frontend: Running.
+- Backend: Running.
+- MongoDB: Running and healthy.
 
-`docker compose ps mongodb`
+**Network verification:**
 
-Test the backend vehicle API:
+`docker network inspect rent-a-ride-network`
+
+Confirmed that frontend, backend, and MongoDB were connected to the custom bridge network.
+
+**Volume verification:**
+
+`docker volume inspect rent-a-ride_mongodb_data`
+
+Confirmed that the existing named MongoDB volume was preserved.
+
+**API connectivity:**
+
+Backend API:
 
 `curl -i http://localhost:3000/api/user/listAllVehicles`
 
-Test the frontend Nginx API proxy:
+Frontend Nginx proxy:
 
 `curl -i http://localhost:3001/api/user/listAllVehicles`
 
-Both API requests returned HTTP 200 during testing.
+Both endpoints returned HTTP 200 and the same five vehicle records.
 
-Verified application behavior:
+**Database persistence test:**
 
-- Frontend loaded at `http://localhost:3001`.
-- Five vehicle images were displayed.
-- Booking form location dropdowns displayed options.
-- Backend API was accessible directly and through the frontend Nginx proxy.
-- Fresh MongoDB initialization inserted five vehicles and fifteen
-  masterdata records.
-- MongoDB reported a healthy container status.
+Before restarting MongoDB, the following collection counts were recorded:
 
-## 22. Docker troubleshooting commands
+| Collection | Records |
+|---|---:|
+| vehicles | 5 |
+| users | 1 |
+| masterdatas | 15 |
+| bookings | 0 |
 
-Check service logs:
+Restarted MongoDB using:
 
-`docker compose logs backend`
+`docker compose restart mongodb`
 
-`docker compose logs frontend`
+After the restart, all collection counts remained unchanged:
 
-`docker compose logs mongodb`
+| Collection | Records |
+|---|---:|
+| vehicles | 5 |
+| users | 1 |
+| masterdatas | 15 |
+| bookings | 0 |
 
-Rebuild and restart services:
+**Result:** Database persistence was successfully verified after the MongoDB container restart. No database records were deleted.
 
-`docker compose up -d --build`
+## 27. Task 4 Troubleshooting and Safe Cleanup
 
-Restart a specific service:
+Check custom network connections:
 
-`docker compose restart backend`
+`docker network inspect rent-a-ride-network`
 
-Check running containers:
+Check persistent volume details:
 
-`docker compose ps`
+`docker volume inspect rent-a-ride_mongodb_data`
 
-Check MongoDB records:
+Check MongoDB collection counts:
 
-`docker compose exec mongodb mongosh rent_a_ride --quiet --eval 'print("Vehicles: " + db.vehicles.countDocuments()); print("Masterdata: " + db.masterdatas.countDocuments());'`
+`docker exec rent-a-ride-mongodb mongosh rent_a_ride --quiet --eval 'db.getCollectionNames().forEach(c => print(c + ": " + db.getCollection(c).countDocuments()))'`
 
-Stop services without deleting persistent database storage:
+Restart MongoDB without deleting its volume:
+
+`docker compose restart mongodb`
+
+Stop services while retaining persistent database storage:
 
 `docker compose down`
 
-**Important:** Do not use `docker compose down -v` unless intentional
-database-volume deletion has been approved and the data has been backed up.
-
-## 23. Known limitations and observations
-
-- Razorpay payment completion has not been verified because valid
-  Razorpay test credentials were not available.
-- The frontend production build completes, but reports unresolved
-  CSS/image asset references and a large JavaScript bundle warning.
-- npm audit reported dependency vulnerabilities during the frontend
-  build. They have not been automatically fixed.
-- Actual third-party integrations require valid credentials supplied
-  through private environment configuration.
+**Important:** Never use `docker compose down -v` for routine cleanup. It removes Compose-managed volumes and can permanently delete database data.
