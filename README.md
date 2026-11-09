@@ -458,3 +458,111 @@ docker network inspect rent-a-ride-network
 ### Troubleshooting
 
 See [Docker and Application Troubleshooting](docs/troubleshooting.md) for container startup, networking, MongoDB persistence, Nginx proxy, API verification, and known limitations.
+
+
+## Task 5: Multi-Stage Docker Builds and Image Security
+
+This task focuses on optimizing Docker images, running application containers with non-root users, verifying the full application stack, and publishing images to multiple container registries.
+
+### 1. Backend Docker Improvements
+
+The backend uses a multi-stage Docker build with Node.js 26 Alpine.
+
+- Separate dependency installation and production stages.
+- Installs production dependencies using `npm ci --omit=dev`.
+- Copies application files with appropriate ownership.
+- Runs the Node.js application as the non-root `node` user.
+
+### 2. Frontend Docker Improvements
+
+The frontend uses a multi-stage build.
+
+- Node.js 26 Alpine is used to build the React/Vite application.
+- Production assets are copied into `nginxinc/nginx-unprivileged:stable-alpine`.
+- Nginx runs as a non-root user.
+- Nginx listens on port `8080` instead of privileged port `80`.
+
+### 3. Container Security Verification
+
+Both application containers were checked to confirm their runtime users.
+
+| Container | Runtime user | UID |
+|---|---|---:|
+| Backend | node | 1000 |
+| Frontend | nginx | 101 |
+
+Verification commands:
+
+```bash
+docker exec rent-a-ride-backend id
+docker exec rent-a-ride-frontend id
+
+Note: The application containers run as non-root users. The Docker daemon itself was not running in rootless mode during this verification. These are separate security configurations.
+
+4. Docker Image Sizes
+Image	Docker disk usage	Content size
+Backend	298 MB	69 MB
+Frontend	98.7 MB	29 MB
+
+5. Full-Stack Verification
+
+The containers were built and started successfully using Docker Compose.
+Component / Test	Result
+Frontend (localhost:3001)	HTTP 200
+Backend API (localhost:3000)	HTTP 200
+Frontend Nginx API proxy	HTTP 200
+Backend runtime user	Non-root
+Frontend runtime user	Non-root
+MongoDB	Healthy
+
+6. Container Registry Publishing
+Both application images were published with the task5 tag to three registries.
+
+Docker Hub
+- Backend: shahzaibazeem/rent-a-ride-backend:task5
+- Frontend: shahzaibazeem/rent-a-ride-frontend:task5
+
+GitHub Container Registry (GHCR)
+- Backend: ghcr.io/shahzaibghaznavi/rent-a-ride-backend:task5
+- Frontend: ghcr.io/shahzaibghaznavi/rent-a-ride-frontend:task5
+AWS Elastic Container Registry (ECR)
+
+AWS Region: ap-south-1 (Mumbai)
+- Backend: 332730082659.dkr.ecr.ap-south-1.amazonaws.com/rent-a-ride-backend:task5
+- Frontend: 332730082659.dkr.ecr.ap-south-1.amazonaws.com/rent-a-ride-frontend:task5
+Both ECR repositories were configured with scan-on-push enabled. However, scan findings were unavailable when queried, so no successful vulnerability scan result is claimed.
+
+7. Pull Images from Registries
+Docker Hub
+docker pull shahzaibazeem/rent-a-ride-backend:task5
+docker pull shahzaibazeem/rent-a-ride-frontend:task5
+
+
+GitHub Container Registry
+docker pull ghcr.io/shahzaibghaznavi/rent-a-ride-backend:task5
+docker pull ghcr.io/shahzaibghaznavi/rent-a-ride-frontend:task5
+
+
+AWS ECR
+
+Authenticate first using AWS CLI:
+aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 332730082659.dkr.ecr.ap-south-1.amazonaws.com
+
+
+Pull the images:
+docker pull 332730082659.dkr.ecr.ap-south-1.amazonaws.com/rent-a-ride-backend:task5
+docker pull 332730082659.dkr.ecr.ap-south-1.amazonaws.com/rent-a-ride-frontend:task5
+
+
+8. Known Build Limitations
+
+The Docker builds completed successfully, but some warnings remain:
+- npm reported dependency vulnerabilities and deprecated packages.
+- The frontend build reported unresolved asset references.
+- The frontend build reported a large JavaScript bundle warning.
+- ECR scan findings were not available during verification.
+
+Dependencies were not force-upgraded because doing so could introduce application compatibility issues. These items remain documented for future improvement.
+
+9. Image Backup and Recovery
+Docker Hub and GHCR provide additional copies of the published images. If an ECR repository is deleted, the images can be restored by pulling them from another registry, tagging them with the recreated ECR repository URI, and pushing them again.

@@ -197,8 +197,8 @@ Docker and Docker Compose.
 
 Services:
 
-- **Frontend:** Multi-stage build using Node.js 24 Alpine and Nginx Alpine.
-- **Backend:** Node.js 22 Alpine container.
+- **Frontend:** Multi-stage build using Node.js 26 Alpine and unprivileged Nginx.
+- **Backend:** Node.js 26 Alpine multi-stage container running as non-root.
 - **MongoDB:** MongoDB 8.0 container.
 - **Nginx:** Serves the frontend and proxies `/api/` requests to the backend.
 
@@ -502,3 +502,183 @@ Stop services while retaining persistent database storage:
 `docker compose down`
 
 **Important:** Never use `docker compose down -v` for routine cleanup. It removes Compose-managed volumes and can permanently delete database data.
+
+
+## 28. Multi-Stage Docker Builds and Non-Root Containers (Task 5)
+
+Task 5 introduced optimized multi-stage Docker builds and non-root application containers.
+
+### Backend Docker Configuration
+
+The backend Dockerfile uses Node.js 26 Alpine with separate dependency and production stages.
+
+- Production dependencies are installed using `npm ci --omit=dev`.
+- Application files are copied with `node:node` ownership.
+- The application runs using the non-root `node` user.
+
+Verify the backend runtime user:
+
+```bash
+docker exec rent-a-ride-backend id
+
+
+Expected user:
+
+uid=1000(node) gid=1000(node) groups=1000(node)
+Frontend Docker Configuration
+The frontend uses Node.js 26 Alpine for building the production application and nginxinc/nginx-unprivileged:stable-alpine for serving the generated files.
+- Nginx runs as the non-root nginx user.
+- Nginx listens on port 8080.
+- Docker Compose maps host port 3001 to container port 8080.
+Verify the frontend runtime user:
+docker exec rent-a-ride-frontend id
+
+
+Expected user:
+
+uid=101(nginx) gid=101(nginx) groups=101(nginx)
+Issue: Frontend Container Fails to Start
+Possible cause: Nginx configuration uses port 80 while the unprivileged Nginx image is configured to listen on port 8080.
+
+Solution:
+
+Check client/nginx.conf:
+listen 8080;
+
+
+Check the frontend port mapping in docker-compose.yml:
+ports:
+  - "3001:8080"
+
+
+Rebuild and restart:
+docker compose build frontend
+docker compose up -d frontend
+docker compose ps
+
+
+Issue: Backend Permission Denied
+Possible cause: Application files or dependencies are not accessible to the non-root node user.
+
+Solution: Ensure files copied into the production stage use the correct ownership:
+COPY --from=dependencies --chown=node:node /app/node_modules ./node_modules
+COPY --chown=node:node package*.json ./
+COPY --chown=node:node backend/ ./backend/
+
+
+Also ensure the Dockerfile switches to the non-root user:
+USER node
+
+
+Rebuild the backend:
+docker compose build --no-cache backend
+docker compose up -d backend
+
+
+Issue: Docker Image Build Fails
+Check Docker Compose configuration:
+docker compose config -q
+
+
+Rebuild application images:
+docker compose build --no-cache frontend backend
+
+
+Start the services:
+docker compose up -d
+
+
+Check container status and logs:
+docker compose ps
+docker compose logs --tail=100 backend
+docker compose logs --tail=100 frontend
+
+
+Full-Stack HTTP Verification
+Check the frontend:
+curl -i http://localhost:3001/
+
+
+Check the backend API:
+curl -i http://localhost:3000/api/user/listAllVehicles
+
+
+Check the frontend Nginx API proxy:
+curl -i http://localhost:3001/api/user/listAllVehicles
+
+
+Expected result: HTTP 200 for all three checks.
+Docker Daemon Rootless Mode
+Non-root application containers and rootless Docker daemon mode are different configurations.
+
+The backend and frontend application processes were verified to run as non-root users. However, the Docker daemon was not running in rootless mode during this task.
+
+Check Docker security options:
+docker info --format '{{json .SecurityOptions}}'
+
+
+Do not interpret non-root container users as proof that the Docker daemon itself is rootless.
+
+## 29. Publishing and Pulling Images from Registries (Task 5)
+The backend and frontend images were published with the task5 tag to Docker Hub, GitHub Container Registry, and AWS ECR.
+### Docker Hub
+docker pull shahzaibazeem/rent-a-ride-backend:task5
+docker pull shahzaibazeem/rent-a-ride-frontend:task5
+
+
+If authentication is required:
+docker login
+
+
+### GitHub Container Registry (GHCR)
+Authenticate using a GitHub Personal Access Token with the required package permissions:
+docker login ghcr.io -u ShahzaibGhaznavi
+
+
+Pull images:
+docker pull ghcr.io/shahzaibghaznavi/rent-a-ride-backend:task5
+docker pull ghcr.io/shahzaibghaznavi/rent-a-ride-frontend:task5
+
+
+### AWS Elastic Container Registry (ECR)
+Authenticate to the AWS ECR registry:
+aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 332730082659.dkr.ecr.ap-south-1.amazonaws.com
+
+
+Pull images:
+docker pull 332730082659.dkr.ecr.ap-south-1.amazonaws.com/rent-a-ride-backend:task5
+docker pull 332730082659.dkr.ecr.ap-south-1.amazonaws.com/rent-a-ride-frontend:task5
+
+
+Issue: Docker Registry Authentication Failed
+Docker Hub:
+docker logout
+docker login
+
+
+GHCR:
+
+Use a valid GitHub Personal Access Token with read:packages permission for pulling private packages. Use write:packages when publishing images.
+docker logout ghcr.io
+docker login ghcr.io -u ShahzaibGhaznavi
+
+
+AWS ECR:
+
+Confirm the AWS identity and region:
+aws sts get-caller-identity
+aws configure get region
+
+
+Refresh ECR authentication:
+aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 332730082659.dkr.ecr.ap-south-1.amazonaws.com
+
+
+### ECR Image Scan Findings Unavailable
+Both ECR repositories were configured with scan-on-push enabled. However, image scan findings were not available when queried during this task.
+
+Do not treat scan-on-push configuration as proof that a completed vulnerability scan or clean scan result was obtained.
+### Known Build Warnings
+The builds completed successfully, but npm reported dependency vulnerabilities and deprecated packages. The frontend build also reported unresolved asset references and a large JavaScript bundle warning.
+
+Forced dependency upgrades were avoided to reduce the risk of breaking existing application functionality. These warnings remain items for future maintenance.
