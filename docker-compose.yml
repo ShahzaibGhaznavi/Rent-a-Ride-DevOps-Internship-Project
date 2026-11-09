@@ -16,6 +16,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - rent_a_ride_network
 
   backend:
     build:
@@ -32,6 +34,8 @@ services:
     depends_on:
       mongodb:
         condition: service_healthy
+    networks:
+      - rent_a_ride_network
 
   frontend:
     build:
@@ -46,6 +50,14 @@ services:
       - "3001:80"
     depends_on:
       - backend
+    networks:
+      - rent_a_ride_network
 
 volumes:
   mongodb_data:
+    name: rent-a-ride_mongodb_data
+
+networks:
+  rent_a_ride_network:
+    name: rent-a-ride-network
+    driver: bridge
