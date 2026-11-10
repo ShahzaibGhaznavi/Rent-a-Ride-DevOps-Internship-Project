@@ -682,3 +682,195 @@ Do not treat scan-on-push configuration as proof that a completed vulnerability 
 The builds completed successfully, but npm reported dependency vulnerabilities and deprecated packages. The frontend build also reported unresolved asset references and a large JavaScript bundle warning.
 
 Forced dependency upgrades were avoided to reduce the risk of breaking existing application functionality. These warnings remain items for future maintenance.
+
+---
+
+## 30. Docker Compose Orchestration and Container Management (Task 6)
+
+Task 6 covers managing the frontend, backend, and MongoDB services together using Docker Compose, pulling pre-built images, configuring healthchecks, and verifying container recovery.
+
+### Issue 1: Application Images Are Not Available Locally
+
+**Cause:** Task 6 uses pre-built frontend and backend images published on Docker Hub.
+
+**Solution:**
+
+```bash
+docker compose pull backend frontend
+docker compose up -d
+```
+
+### Issue 2: Services Are Not Starting Properly
+
+**Cause:** Backend depends on MongoDB health, while frontend depends on backend health.
+
+**Checks:**
+
+```bash
+docker compose ps
+docker compose logs mongodb
+docker compose logs backend
+docker compose logs frontend
+```
+
+Wait until the required dependency services report healthy.
+
+### Issue 3: Backend Cannot Connect to MongoDB
+
+**Cause:** Containers must communicate using the Docker Compose service hostname instead of `localhost`.
+
+**Correct MongoDB connection URI:**
+
+```text
+mongodb://mongodb:27017/rent_a_ride
+```
+
+**Checks:**
+
+```bash
+docker compose exec backend printenv mongo_uri
+docker compose ps
+docker compose logs backend
+```
+
+Ensure MongoDB is healthy and the backend uses the correct connection URI. Never expose or commit private credentials.
+
+### Issue 4: Frontend or Backend API Is Not Responding
+
+**Checks:**
+
+```bash
+curl -i http://localhost:3001/
+curl -i http://localhost:3000/api/user/listAllVehicles
+curl -i http://localhost:3001/api/user/listAllVehicles
+```
+
+Check application logs:
+
+```bash
+docker compose logs --tail=100
+```
+
+All three endpoints returned HTTP 200 during Task 6 verification. If an endpoint fails, inspect the relevant service logs, container status, and port mappings.
+
+### Issue 5: Frontend Cannot Reach the Backend
+
+**Cause:** Frontend Nginx must forward API requests to the backend service through the Docker Compose network.
+
+**Expected backend service address inside Docker:**
+
+```text
+http://backend:3000
+```
+
+**Checks:**
+
+```bash
+docker compose ps
+docker compose logs frontend
+docker compose logs backend
+docker network inspect rent-a-ride-network
+```
+
+Ensure all three services are connected to the expected Docker network.
+
+### Issue 6: Container Keeps Restarting
+
+**Possible causes:** Application errors, incorrect configuration, or unavailable dependencies.
+
+**Checks:**
+
+```bash
+docker compose ps
+docker compose logs --tail=100 backend
+docker inspect --format='Status: {{.State.Status}} | Restart Count: {{.RestartCount}}' rent-a-ride-backend
+```
+
+The services use the `unless-stopped` restart policy. Review application logs to identify the actual cause before changing restart configuration.
+
+### Issue 7: Container Healthcheck Reports Unhealthy
+
+**Possible cause:** The configured healthcheck endpoint or a required dependency is not responding successfully.
+
+**Checks:**
+
+```bash
+docker compose ps
+docker inspect rent-a-ride-backend
+docker inspect rent-a-ride-frontend
+docker inspect rent-a-ride-mongodb
+```
+
+Review healthcheck results and service logs to identify the failing check.
+
+### Issue 8: Stop or Recreate Containers Without Losing Database Data
+
+**Solution:**
+
+Stop the application stack:
+
+```bash
+docker compose down
+```
+
+Start it again:
+
+```bash
+docker compose up -d
+```
+
+The named MongoDB volume `rent-a-ride_mongodb_data` is retained when `docker compose down` runs without the `-v` option.
+
+**Important:** Never use `docker compose down -v` for routine cleanup because it removes the Compose-managed MongoDB volume and its stored data.
+
+### Useful Task 6 Commands
+
+Validate the Compose configuration:
+
+```bash
+docker compose config -q
+```
+
+Pull application images:
+
+```bash
+docker compose pull backend frontend
+```
+
+Start services in detached mode:
+
+```bash
+docker compose up -d
+```
+
+Check service status:
+
+```bash
+docker compose ps
+```
+
+View recent logs:
+
+```bash
+docker compose logs --tail=50
+```
+
+Follow backend logs:
+
+```bash
+docker compose logs -f backend
+```
+
+Inspect the MongoDB volume:
+
+```bash
+docker volume inspect rent-a-ride_mongodb_data
+```
+
+Inspect the application network:
+
+```bash
+docker network inspect rent-a-ride-network
+```
+
+**Security and Data Protection Note:** Keep actual environment files and credentials out of Git. Avoid deleting named Docker volumes unless database data removal is explicitly intended.

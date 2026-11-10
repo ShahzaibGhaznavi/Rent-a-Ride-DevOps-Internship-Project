@@ -566,3 +566,152 @@ Dependencies were not force-upgraded because doing so could introduce applicatio
 
 9. Image Backup and Recovery
 Docker Hub and GHCR provide additional copies of the published images. If an ECR repository is deleted, the images can be restored by pulling them from another registry, tagging them with the recreated ECR repository URI, and pushing them again.
+
+
+## Task 6: Docker Compose Orchestration and Container Management
+
+Task 6 focuses on managing the frontend, backend, and MongoDB services together using Docker Compose, pulling pre-built application images from Docker Hub, configuring service healthchecks, and verifying container recovery.
+
+### 1. Docker Compose Services
+
+The application is orchestrated using three services:
+
+| Service | Image | Host Port | Container Port |
+|---|---|---:|---:|
+| Frontend | `shahzaibazeem/rent-a-ride-frontend:task5` | 3001 | 8080 |
+| Backend | `shahzaibazeem/rent-a-ride-backend:task5` | 3000 | 3000 |
+| MongoDB | `mongo:8.0` | 27018 | 27017 |
+
+### 2. Pull Pre-built Images
+
+The frontend and backend images are pulled from Docker Hub instead of being rebuilt locally.
+
+```bash
+docker compose pull backend frontend
+```
+
+### 3. Environment Configuration
+
+The backend reads its private configuration from the root `.env` file.
+
+The MongoDB connection inside Docker Compose uses the service hostname:
+
+`mongodb://mongodb:27017/rent_a_ride`
+
+Actual credentials must remain in the local `.env` file and must never be committed to Git.
+
+The frontend uses the configuration already included in the published Task 5 image.
+
+### 4. Service Dependencies and Healthchecks
+
+Docker Compose configures service startup dependencies:
+
+- Backend waits until MongoDB reports healthy.
+- Frontend waits until the backend reports healthy.
+- MongoDB healthcheck uses `mongosh` to verify database availability.
+- Backend healthcheck verifies the vehicle API endpoint.
+- Frontend healthcheck checks the Nginx HTTP endpoint.
+
+Validate the Compose configuration:
+
+```bash
+docker compose config -q
+```
+
+## 5. Restart Policies and Process Management
+
+All three services use:
+
+`restart: unless-stopped`
+
+The backend additionally uses:
+
+`init: true`
+
+This enables an init process inside the backend container to manage and forward signals to the Node.js application process.
+
+## 6. Container Logging
+
+All services use Docker's `json-file` logging driver with bounded log storage:
+
+- Maximum log file size: 10 MB
+- Maximum log files: 3
+
+View service logs:
+
+```bash
+docker compose logs --tail=50
+docker compose logs -f backend
+```
+
+## 7. Start Services in Detached Mode
+
+Start the complete application stack:
+
+```bash
+docker compose up -d
+```
+
+Check service status:
+
+```bash
+docker compose ps
+```
+
+## 8. Application Verification
+
+The following HTTP checks were performed:
+
+```bash
+curl -s -o /dev/null -w "Frontend HTTP: %{http_code}\n" http://localhost:3001/
+
+curl -s -o /dev/null -w "Backend API HTTP: %{http_code}\n" http://localhost:3000/api/user/listAllVehicles
+
+curl -s -o /dev/null -w "Frontend Proxy API HTTP: %{http_code}\n" http://localhost:3001/api/user/listAllVehicles
+```
+
+All three endpoints returned HTTP 200 during verification.
+
+The application was also opened in a browser, and the vehicle browsing and booking flow was tested.
+
+## 9. Automatic Backend Restart Verification
+
+The backend restart policy was tested by terminating the Node.js application process inside the container.
+
+The backend container automatically restarted.
+
+Verification:
+
+```bash
+docker inspect --format='Status: {{.State.Status}} | Restart Count: {{.RestartCount}}' rent-a-ride-backend
+```
+
+Observed result:
+
+- Container status: Running
+- Restart count: 1
+- Backend API after restart: HTTP 200
+
+All three services were subsequently confirmed healthy using:
+
+```bash
+docker compose ps
+```
+
+## 10. Safe Cleanup and Persistent Data
+
+Stop the application stack without deleting MongoDB data:
+
+```bash
+docker compose down
+```
+
+Start the services again:
+
+```bash
+docker compose up -d
+```
+
+The named MongoDB volume `rent-a-ride_mongodb_data` is retained when Compose is brought down without the `-v` option.
+
+**Important:** Do not use `docker compose down -v` for routine cleanup because it deletes the Compose-managed database volume.
