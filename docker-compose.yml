@@ -4,52 +4,96 @@ services:
     image: mongo:8.0
     container_name: rent-a-ride-mongodb
     restart: unless-stopped
+
     environment:
       MONGO_INITDB_DATABASE: rent_a_ride
+
     ports:
       - "27018:27017"
+
     volumes:
       - mongodb_data:/data/db
       - ./mongo-init:/docker-entrypoint-initdb.d:ro
+
     healthcheck:
       test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 20s
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
     networks:
       - rent_a_ride_network
 
   backend:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
+    image: shahzaibazeem/rent-a-ride-backend:task5
     container_name: rent-a-ride-backend
     restart: unless-stopped
+    init: true
     env_file:
       - .env
+
     environment:
       mongo_uri: mongodb://mongodb:27017/rent_a_ride
+
     ports:
       - "3000:3000"
+
     depends_on:
       mongodb:
         condition: service_healthy
+
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/api/user/listAllVehicles').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
     networks:
       - rent_a_ride_network
 
   frontend:
-    build:
-      context: .
-      dockerfile: client/Dockerfile
-      args:
-        VITE_FIREBASE_API_KEY: ${VITE_FIREBASE_API_KEY}
-        VITE_RAZORPAY_KEY_ID: ${VITE_RAZORPAY_KEY_ID}
+    image: shahzaibazeem/rent-a-ride-frontend:task5
     container_name: rent-a-ride-frontend
     restart: unless-stopped
+
     ports:
       - "3001:8080"
+
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8080/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
     networks:
       - rent_a_ride_network
 
