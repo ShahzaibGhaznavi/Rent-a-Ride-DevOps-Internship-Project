@@ -874,3 +874,60 @@ docker network inspect rent-a-ride-network
 ```
 
 **Security and Data Protection Note:** Keep actual environment files and credentials out of Git. Avoid deleting named Docker volumes unless database data removal is explicitly intended.
+## 31. Jenkins CI/CD Pipeline and Runtime Verification (Task 7)
+
+### Jenkins Environment
+- OS: Ubuntu 26.04 LTS on AWS EC2
+- Jenkins: LTS
+- Java: 21
+- Docker: 29.1.3
+- Docker Compose: 2.40.3
+- AWS Region: ap-south-1
+
+### CI/CD Pipeline
+1. Checkout source code from the GitHub feature branch.
+2. Build backend and frontend Docker images.
+3. Push images to Docker Hub.
+4. Push images to AWS ECR.
+
+Published images:
+- `shahzaibazeem/rent-a-ride-backend:task7-3`
+- `shahzaibazeem/rent-a-ride-frontend:task7-3`
+- `332730082659.dkr.ecr.ap-south-1.amazonaws.com/rent-a-ride-backend:task7-3`
+- `332730082659.dkr.ecr.ap-south-1.amazonaws.com/rent-a-ride-frontend:task7-3`
+
+### GitHub Webhook Verification
+- GitHub push webhook configured with Jenkins.
+- Webhook ping returned HTTP 200.
+- GitHub push automatically triggered Jenkins Build #3.
+- Jenkins Build #3 completed successfully.
+
+### Docker Compose Runtime Testing
+Three services were started on EC2:
+- MongoDB 8.0
+- Rent-a-Ride backend
+- Rent-a-Ride frontend
+
+All three containers reached a healthy state.
+
+Frontend test: `http://localhost:3001/` returned HTTP 200.
+
+Backend API through the frontend NGINX proxy:
+`http://localhost:3001/api/user/listAllVehicles` returned HTTP 200.
+
+### Issues and Fixes
+- Installed Docker Compose v2 because it was initially unavailable.
+- Created `.env` from `.env.example` and restricted its permissions.
+- Updated Compose image references from Task 5 tags to Task 7 tags.
+- Used `sudo` for Docker commands where required.
+
+### Known Limitations
+- Real Firebase, Razorpay, email and Cloudinary credentials still need configuration.
+- HTTP 200 confirms basic frontend and API availability, not complete booking, authentication or payment workflows.
+- Jenkins builds and publishes images; production deployment is not automated.
+
+### Useful Verification Commands
+- `sudo docker compose ps`
+- `sudo docker images`
+- `sudo docker compose logs --tail=50`
+- `sudo systemctl status jenkins`
