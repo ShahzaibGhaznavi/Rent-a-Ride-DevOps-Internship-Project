@@ -32,12 +32,12 @@ services:
       - rent_a_ride_network
 
   backend:
-    image: shahzaibazeem/rent-a-ride-backend:task7-3
+    image: shahzaibazeem/rent-a-ride-backend:${IMAGE_TAG:-task7-3}
     container_name: rent-a-ride-backend
     restart: unless-stopped
     init: true
     env_file:
-      - .env
+      - ${APP_ENV_FILE:-.env}
 
     environment:
       mongo_uri: mongodb://mongodb:27017/rent_a_ride
@@ -70,7 +70,7 @@ services:
       - rent_a_ride_network
 
   frontend:
-    image: shahzaibazeem/rent-a-ride-frontend:task7-3
+    image: shahzaibazeem/rent-a-ride-frontend:${IMAGE_TAG:-task7-3}
     container_name: rent-a-ride-frontend
     restart: unless-stopped
 
