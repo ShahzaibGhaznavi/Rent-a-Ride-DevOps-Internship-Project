@@ -17,6 +17,9 @@ pipeline {
         ECR_BACKEND = 'rent-a-ride-backend'
         ECR_FRONTEND = 'rent-a-ride-frontend'
 
+        COMPOSE_PROJECT_NAME = 'rent-a-ride-devops-internship-project'
+        APP_ENV_FILE = '/etc/rent-a-ride/.env'
+
         IMAGE_TAG = "task7-${BUILD_NUMBER}"
     }
 
@@ -85,14 +88,67 @@ pipeline {
                 }
             }
         }
+
+        stage('Cleanup Local Build Tags') {
+            steps {
+                sh '''
+                    docker image rm \
+                      "$DOCKERHUB_BACKEND:$IMAGE_TAG" \
+                      "$DOCKERHUB_FRONTEND:$IMAGE_TAG" \
+                      "$ECR_REGISTRY/$ECR_BACKEND:$IMAGE_TAG" \
+                      "$ECR_REGISTRY/$ECR_FRONTEND:$IMAGE_TAG" \
+                      || true
+                '''
+            }
+        }
+
+        stage('Deploy with Docker Compose') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'dockerhub-rent-a-ride',
+                        usernameVariable: 'DOCKERHUB_USER',
+                        passwordVariable: 'DOCKERHUB_TOKEN'
+                    )
+                ]) {
+                    sh '''
+                        set -eu
+                        set +x
+
+                        test -r "$APP_ENV_FILE"
+
+                        printf '%s' "$DOCKERHUB_TOKEN" | \
+                          docker login --username "$DOCKERHUB_USER" --password-stdin
+
+                        trap 'docker logout >/dev/null 2>&1 || true' EXIT
+
+                        docker compose \
+                          -p "$COMPOSE_PROJECT_NAME" \
+                          pull backend frontend
+
+                        docker compose \
+                          -p "$COMPOSE_PROJECT_NAME" \
+                          up -d --remove-orphans --wait --wait-timeout 180
+
+                        curl -fsS http://127.0.0.1:3001/ >/dev/null
+
+                        curl -fsS \
+                          http://127.0.0.1:3001/api/user/listAllVehicles \
+                          >/dev/null
+
+                        docker compose -p "$COMPOSE_PROJECT_NAME" ps
+                    '''
+                }
+            }
+        }
     }
 
     post {
         success {
-            echo 'Task 7 CI pipeline completed successfully.'
+            echo 'Task 8 CI/CD pipeline and Docker Compose deployment completed successfully.'
         }
         failure {
-            echo 'Task 7 CI pipeline failed. Check the stage logs.'
+            echo 'Pipeline failed. Check the stage logs before retrying.'
         }
     }
 }
