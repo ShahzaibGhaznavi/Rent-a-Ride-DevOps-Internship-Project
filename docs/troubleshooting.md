@@ -931,3 +931,556 @@ Backend API through the frontend NGINX proxy:
 - `sudo docker images`
 - `sudo docker compose logs --tail=50`
 - `sudo systemctl status jenkins`
+
+---
+
+## 32. Task 8: Automated CI/CD Deployment with Jenkins
+
+### Objective
+
+Implement an automated CI/CD pipeline for the Rent-a-Ride application using Jenkins, Docker, Docker Hub, AWS ECR, and Docker Compose.
+
+The pipeline automates source code checkout, Docker image building, image publishing, deployment, and health verification.
+
+### Project Architecture
+
+The application consists of three services:
+
+- Frontend: React application served through Nginx.
+- Backend: Node.js and Express API.
+- Database: MongoDB 8.0.
+
+Application flow:
+
+Browser → Nginx Frontend (Port 3001) → Express Backend (Port 3000) → MongoDB (Port 27017).
+
+Nginx forwards `/api/` requests to the backend Docker service.
+
+Docker network: `rent-a-ride-network`
+
+MongoDB persistent volume: `rent-a-ride_mongodb_data`
+
+### CI/CD Tools
+
+- Jenkins: Pipeline automation.
+- GitHub: Source code and webhook integration.
+- Docker: Application containerization.
+- Docker Hub: Container image registry.
+- AWS ECR: Private container image registry.
+- Docker Compose: Multi-container deployment.
+- AWS EC2: Deployment environment.
+
+### Jenkins Pipeline Workflow
+
+The declarative Jenkins pipeline performs these operations:
+
+1. Checkout source code from GitHub.
+2. Build backend Docker image.
+3. Build frontend Docker image.
+4. Tag images using the Jenkins build number.
+5. Authenticate with Docker Hub and AWS ECR.
+6. Push backend and frontend images to Docker Hub.
+7. Push backend and frontend images to AWS ECR.
+8. Remove temporary local build tags.
+9. Pull published images for deployment.
+10. Deploy services using Docker Compose.
+11. Wait for services to become healthy.
+12. Perform deployment health checks.
+13. Report pipeline success or failure.
+
+Image tagging convention:
+
+`task7-${BUILD_NUMBER}`
+
+Example:
+
+- `shahzaibazeem/rent-a-ride-backend:task7-5`
+- `shahzaibazeem/rent-a-ride-frontend:task7-5`
+
+AWS ECR repositories:
+
+- `rent-a-ride-backend`
+- `rent-a-ride-frontend`
+
+### GitHub Webhook Integration
+
+Configured branch:
+
+`feature/shahzaib-azeem`
+
+Jenkins webhook endpoint:
+
+`http://13.233.133.133:8080/github-webhook/`
+
+Webhook events include push and pull request events.
+
+The webhook endpoint received GitHub events. Push events triggered Jenkins builds.
+
+Note: A successful webhook HTTP 200 response confirms delivery to the endpoint; it does not independently prove that a Jenkins job was triggered. The Jenkins job monitors the feature branch, so PR merge events targeting `dev` are not automatically equivalent to a feature-branch build.
+
+### Docker Compose Deployment
+
+The deployment uses three services:
+
+| Service | Container | Port |
+|---|---|---|
+| Frontend | rent-a-ride-frontend | 3001:8080 |
+| Backend | rent-a-ride-backend | 3000:3000 |
+| MongoDB | rent-a-ride-mongodb | 27018:27017 |
+
+Backend MongoDB connection:
+
+`mongodb://mongodb:27017/rent_a_ride`
+
+Docker Compose health checks are configured for the services. MongoDB data is persisted through a named volume.
+
+### Environment Variables and Credentials
+
+Sensitive environment variables are not committed to GitHub.
+
+Backend environment file on EC2:
+
+`/etc/rent-a-ride/.env`
+
+Jenkins credentials:
+
+- `dockerhub-rent-a-ride`
+- `github-rent-a-ride`
+
+AWS ECR access is provided through the EC2 IAM role:
+
+`RentARide-EC2-ECR-Role`
+
+### Deployment Verification
+
+The following checks were performed on EC2.
+
+Check running containers:
+
+`docker ps`
+
+Verified containers:
+
+- rent-a-ride-frontend
+- rent-a-ride-backend
+- rent-a-ride-mongodb
+
+Frontend health check:
+
+`curl -I http://localhost:3001`
+
+Expected result: `HTTP 200 OK`
+
+Backend API check:
+
+`curl -i http://localhost:3000/api/user/listAllVehicles`
+
+Expected result: `HTTP 200 OK`
+
+Frontend-to-backend proxy check:
+
+`curl -i http://localhost:3001/api/user/listAllVehicles`
+
+Expected result: `HTTP 200 OK`
+
+Public API check:
+
+`curl http://13.233.133.133:3001/api/user/listAllVehicles`
+
+Expected result: `HTTP 200 OK`
+
+Public access was tested after allowing inbound TCP port 3001 in the EC2 Security Group.
+
+### Troubleshooting
+
+**1. Docker Permission Denied**
+
+Add the Ubuntu user to the Docker group:
+
+`sudo usermod -aG docker ubuntu`
+
+Reconnect to SSH and verify:
+
+`groups`
+
+**2. Check Container Status**
+
+`docker ps`
+
+**3. Check Container Logs**
+
+`docker logs rent-a-ride-backend`
+
+`docker logs rent-a-ride-frontend`
+
+`docker logs rent-a-ride-mongodb`
+
+**4. Check Docker Compose Services**
+
+`docker compose ps`
+
+**5. Test Backend API**
+
+`curl http://localhost:3000/api/user/listAllVehicles`
+
+**6. Test Nginx API Proxy**
+
+`curl http://localhost:3001/api/user/listAllVehicles`
+
+**7. Public Access Timeout**
+
+Check the EC2 Security Group inbound rules and confirm that TCP port 3001 is allowed from the intended source.
+
+### Data Protection and Best Practices
+
+- Never commit `.env` files or credentials.
+- Do not delete the MongoDB persistent volume during normal deployments.
+- Avoid `docker compose down -v` because it deletes named volumes.
+- Keep AWS IAM permissions restricted to required actions.
+- Remove unused AWS resources after completing the lab to avoid unnecessary charges.
+
+### Result
+
+The Rent-a-Ride CI/CD pipeline was implemented using Jenkins and Docker Compose.
+
+The frontend, backend, and MongoDB containers were verified as healthy. Backend API requests were tested directly and through the Nginx frontend proxy. Public API access returned HTTP 200.
+
+The pipeline publishes application images to Docker Hub and AWS ECR and deploys the application on AWS EC2.
+
+---
+
+## 33. Task 9: Kubernetes Deployment on AWS EC2 Using Kind
+
+### 1. Objective
+
+Deploy the Rent-a-Ride application on a Kubernetes cluster running on AWS EC2 using Kind.
+
+The deployment includes:
+
+- React frontend served through Nginx.
+- Node.js and Express backend.
+- MongoDB database.
+- Kubernetes Deployments, StatefulSet and Services.
+- Persistent storage for MongoDB.
+- ConfigMaps and Kubernetes Secrets.
+- Health checks and application connectivity verification.
+
+### 2. Environment and Infrastructure
+
+The following environment was used:
+
+| Component | Configuration |
+|---|---|
+| Cloud Provider | AWS |
+| Region | ap-south-1 |
+| EC2 Instance | t2.medium |
+| Operating System | Ubuntu 24.04 |
+| Docker Engine | 29.9.3 |
+| Kind | v0.30.0 |
+| Kubernetes Node Image | kindest/node:v1.34.0 |
+| kubectl | v1.35.9 |
+| Kind Cluster | task9-cluster |
+| Kubernetes Namespace | rent-a-ride |
+
+The Kind cluster contains:
+
+- 1 control-plane node.
+- 2 worker nodes.
+
+### 3. Kubernetes Architecture
+
+Application request flow:
+
+Browser → EC2 Host Port 8080 → Kind NodePort 30080 → Frontend Nginx → Backend Service Port 3000 → MongoDB Service Port 27017.
+
+MongoDB stores its persistent data using a 2Gi PersistentVolumeClaim.
+
+The Kubernetes API server remains bound to localhost on the EC2 host and is not exposed publicly.
+
+### 4. Kubernetes Resources
+
+| Component | Kubernetes Resource | Purpose |
+|---|---|---|
+| Namespace | Namespace | Application isolation |
+| Frontend | Deployment | Runs frontend container |
+| Frontend | NodePort Service | Exposes frontend |
+| Backend | Deployment | Runs Express API |
+| Backend | ClusterIP Service | Internal API access |
+| MongoDB | StatefulSet | Runs database |
+| MongoDB | ClusterIP Service | Internal database access |
+| MongoDB | PersistentVolumeClaim | Persistent database storage |
+| Backend | ConfigMap | Non-sensitive configuration |
+| MongoDB | ConfigMap | Database initialization script |
+| Backend | Secret | JWT signing keys |
+
+### 5. Container Images
+
+The following images were used:
+
+- Backend: rent-a-ride-backend:task9-1
+- Frontend: rent-a-ride-frontend:task7-3
+- MongoDB: mongo:8.0
+
+The backend and frontend application images were stored in AWS ECR.
+
+Existing ECR repositories were reused rather than recreated.
+
+### 6. Application Configuration
+
+The Kubernetes namespace is:
+
+`rent-a-ride`
+
+The backend connects to MongoDB through Kubernetes service discovery:
+
+`mongodb://mongodb:27017/rent_a_ride`
+
+The backend receives configuration through a ConfigMap and sensitive JWT signing keys through a Kubernetes Secret.
+
+The Secret is created directly in the cluster. Its actual values must not be committed to Git.
+
+### 7. MongoDB Initialization and Persistence
+
+A MongoDB initialization script was mounted through the `mongodb-init` ConfigMap.
+
+The script inserts sample vehicle and masterdata records when the respective collections are empty.
+
+MongoDB uses a 2Gi PersistentVolumeClaim.
+
+The PVC was verified as Bound.
+
+Important: MongoDB initialization scripts in the official image run when the database directory is first initialized. Recreating a ConfigMap does not automatically rerun initialization against an existing database.
+
+Do not delete the PVC during normal troubleshooting because doing so can result in database data loss.
+
+### 8. Backend Startup and Health Checks
+
+The backend startup logic was updated to wait for a successful MongoDB connection before starting the Express server.
+
+The MongoDB connection handling was corrected using async/await.
+
+A `/health` endpoint was added to report backend and database connectivity.
+
+Kubernetes startup, readiness and liveness probes were configured for the backend and MongoDB workloads.
+
+### 9. Deployment and Verification
+
+Kubernetes manifests are stored in:
+
+`k8s/`
+
+Apply the manifests:
+
+`kubectl apply -f k8s/`
+
+Check cluster nodes:
+
+`kubectl get nodes -o wide`
+
+Check application resources:
+
+`kubectl get all -n rent-a-ride`
+
+Check persistent volume claims:
+
+`kubectl get pvc -n rent-a-ride`
+
+Check backend rollout:
+
+`kubectl rollout status deployment/backend -n rent-a-ride`
+
+Check MongoDB rollout:
+
+`kubectl rollout status statefulset/mongodb -n rent-a-ride`
+
+Check backend logs:
+
+`kubectl logs deployment/backend -n rent-a-ride`
+
+Check MongoDB logs:
+
+`kubectl logs mongodb-0 -n rent-a-ride`
+
+### 10. Application Connectivity Testing
+
+The following tests were performed.
+
+**Backend Health Endpoint**
+
+Request:
+
+`http://backend:3000/health`
+
+Result:
+
+`HTTP 200 OK`
+
+Response:
+
+`{"status":"healthy","database":"connected"}`
+
+**Backend Vehicle API**
+
+Request:
+
+`http://backend:3000/api/user/listAllVehicles`
+
+Result:
+
+`HTTP 200 OK`
+
+The API returned five seeded vehicle records.
+
+**Frontend Nginx Reverse Proxy**
+
+Request:
+
+`http://127.0.0.1:8080/api/user/listAllVehicles`
+
+Result:
+
+`HTTP 200 OK`
+
+The response contained vehicle records retrieved through the frontend Nginx reverse proxy.
+
+**Frontend Homepage**
+
+Request:
+
+`http://127.0.0.1:8080/`
+
+Result:
+
+`HTTP 200 OK`
+
+The Nginx frontend returned the application HTML successfully.
+
+### 11. EC2 Port Mapping and Security
+
+Kind NodePort 30080 is mapped to EC2 host port 8080.
+
+The frontend can be accessed through:
+
+`http://<EC2-PUBLIC-IP>:8080`
+
+The EC2 Security Group must allow inbound TCP port 8080 from the intended client IP address.
+
+Security recommendations:
+
+- Restrict SSH port 22 to the administrator's IP address.
+- Do not expose MongoDB port 27017 publicly.
+- Do not expose Kubernetes API port 6443 publicly.
+- Keep backend services internal to the Kubernetes cluster unless external access is specifically required.
+
+### 12. Troubleshooting
+
+**Issue 1: Backend JWT Authentication Error**
+
+Error:
+
+`secretOrPrivateKey must have a value`
+
+Cause:
+
+The backend did not receive ACCESS_TOKEN and REFRESH_TOKEN environment variables.
+
+Fix:
+
+Created a Kubernetes Secret named `backend-secrets` with newly generated JWT signing keys and referenced it in the backend Deployment.
+
+Verification:
+
+Backend rollout completed and the backend server started successfully.
+
+Note: Newly generated JWT keys do not validate sessions signed using previous signing keys.
+
+**Issue 2: Backend MongoDB Startup Dependency**
+
+Issue:
+
+The backend required MongoDB to be available before starting the application.
+
+Fix:
+
+Updated backend startup logic to wait for the MongoDB connection using async/await.
+
+Verification:
+
+Backend logs confirmed MongoDB connectivity and database name `rent_a_ride`.
+
+**Issue 3: MongoDB Probe Timeout**
+
+Issue:
+
+MongoDB health probes encountered startup timeouts.
+
+Fix:
+
+Configured startup, readiness and liveness probes with a longer timeout to allow database initialization.
+
+Verification:
+
+MongoDB reached 1/1 Running and its PVC remained Bound.
+
+**Issue 4: Frontend and Backend Communication**
+
+Issue:
+
+Frontend API requests needed to reach the backend through Kubernetes networking.
+
+Fix:
+
+Configured a backend ClusterIP Service and Nginx reverse proxy.
+
+Verification:
+
+The frontend proxy API returned HTTP 200 with five vehicle records.
+
+**Issue 5: External Frontend Access**
+
+Issue:
+
+The frontend required access through the EC2 host port.
+
+Fix:
+
+Mapped Kind NodePort 30080 to EC2 host port 8080 and configured the corresponding Security Group inbound rule.
+
+Verification:
+
+The frontend homepage and API were successfully tested locally on the EC2 host. External browser access depends on the Security Group allowing port 8080.
+
+### 13. Best Practices
+
+- Use Deployments for stateless frontend and backend services.
+- Use StatefulSets and PersistentVolumeClaims for database workloads.
+- Use ClusterIP Services for internal application communication.
+- Use ConfigMaps for non-sensitive configuration.
+- Use Kubernetes Secrets for sensitive values.
+- Configure startup, readiness and liveness probes.
+- Use resource requests and limits.
+- Keep database and Kubernetes API ports private.
+- Preserve database PVCs during troubleshooting.
+- Use versioned container image tags.
+- Validate manifests before applying changes.
+
+### 14. Known Limitations
+
+- This is a learning environment, not a production high-availability deployment.
+- MongoDB runs as a single replica using local-path storage.
+- MongoDB authentication has not been enabled.
+- Existing Docker Compose database users are not automatically migrated to the Kubernetes database.
+- Newly generated JWT keys do not preserve old login sessions.
+- Cloudinary, Razorpay, email and other external integrations require valid credentials and have not all been verified.
+- Vite frontend environment variables are build-time settings; Kubernetes runtime variables cannot modify an already-built frontend bundle.
+- Public browser access depends on the EC2 Security Group allowing inbound TCP port 8080.
+
+### 15. Result
+
+The Rent-a-Ride application was deployed on a three-node Kind Kubernetes cluster running on AWS EC2.
+
+The frontend, backend and MongoDB workloads reached Running state. MongoDB persistence was verified, backend health checks succeeded, and the vehicle API returned five seeded records.
+
+The frontend Nginx reverse proxy successfully forwarded API requests to the backend, returning HTTP 200.
+
+The deployment demonstrates Kubernetes workload management, service discovery, persistent storage, configuration management, health checks and application connectivity verification.
