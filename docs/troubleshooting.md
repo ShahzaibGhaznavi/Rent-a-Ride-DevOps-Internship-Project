@@ -1484,3 +1484,188 @@ The frontend, backend and MongoDB workloads reached Running state. MongoDB persi
 The frontend Nginx reverse proxy successfully forwarded API requests to the backend, returning HTTP 200.
 
 The deployment demonstrates Kubernetes workload management, service discovery, persistent storage, configuration management, health checks and application connectivity verification.
+
+
+
+---
+
+## 34. Task 11: Kubernetes Deployment, Resource Management & Auto Scaling with Kind
+
+### 1. Objective
+
+Deployed the Rent-a-Ride application on Kubernetes using Kind on AWS EC2 and configured resource management, health probes, autoscaling and load testing.
+
+### 2. Infrastructure and Tools
+
+- AWS EC2: t3.medium (2 vCPU, 4 GB RAM)
+- Storage: 20 GB
+- OS: Ubuntu 26.04.1 LTS
+- Docker: 29.1.3
+- Kind: v0.30.0
+- kubectl: v1.34.0
+- Apache Benchmark (ab)
+
+Note: The assignment specified t2.medium, but the actual instance used was t3.medium.
+
+### 3. Kubernetes Cluster and Namespace
+
+- Created a Kind cluster named `rent-a-ride`.
+- Verified the Kubernetes cluster and node status.
+- Created a dedicated namespace named `rent-a-ride`.
+- Used Kubernetes v1.34.0.
+
+Verification:
+
+```bash
+kind get clusters
+kubectl cluster-info
+kubectl get nodes
+kubectl get namespaces
+```
+
+### 4. Application Deployment
+
+Deployed the following components:
+
+- Frontend Deployment and NodePort Service.
+- Backend Deployment and ClusterIP Service.
+- MongoDB StatefulSet and ClusterIP Service.
+- MongoDB PersistentVolumeClaim.
+- ConfigMaps and Kubernetes Secret for configuration.
+
+Frontend Nginx reverse proxy successfully communicated with the backend service.
+
+### 5. CPU and Memory Requests/Limits
+
+Configured resource requests and limits:
+
+| Component | CPU Request | CPU Limit | Memory Request | Memory Limit |
+|---|---:|---:|---:|---:|
+| Frontend | 50m | 250m | 64Mi | 128Mi |
+| Backend | 100m | 500m | 128Mi | 384Mi |
+
+### 6. Health Probes
+
+Configured:
+
+**Backend**
+- Startup probe: TCP port 3000.
+- Liveness probe: TCP port 3000.
+- Readiness probe: HTTP `/health`.
+
+**Frontend**
+- Liveness probe: HTTP `/` on port 8080.
+- Readiness probe: HTTP `/` on port 8080.
+
+Backend health endpoint returned healthy status with database connected.
+
+### 7. Horizontal Pod Autoscaling (HPA)
+
+Configured HPA using `autoscaling/v2`.
+
+- Minimum replicas: 1
+- Maximum replicas: 3
+- CPU utilization target: 70%
+- Scale-up and scale-down behavior configured.
+
+Installed Metrics Server to provide resource metrics to Kubernetes HPA.
+
+Verification:
+
+```bash
+kubectl get hpa -n rent-a-ride
+kubectl describe hpa backend-hpa -n rent-a-ride
+kubectl top pods -n rent-a-ride
+```
+
+### 8. Load Testing
+
+Used Apache Benchmark to generate application traffic.
+
+Test 1:
+
+```bash
+ab -n 1000 -c 20 http://127.0.0.1:3000/api/user/listAllVehicles
+```
+
+Test 2:
+
+```bash
+ab -n 2000 -c 40 http://127.0.0.1:3000/api/user/listAllVehicles
+```
+
+Second test results:
+
+- Total requests: 2,000
+- Concurrency: 40
+- Failed requests: 0
+- Requests per second: 38.72
+
+### 9. Autoscaling Verification
+
+During load testing, backend replicas automatically scaled from 1 to 2 when CPU utilization exceeded the target.
+
+After the load decreased, HPA scaled replicas back from 2 to 1.
+
+Verified using:
+
+```bash
+kubectl get hpa -n rent-a-ride
+kubectl get pods -n rent-a-ride -w
+kubectl describe hpa backend-hpa -n rent-a-ride
+```
+
+### 10. Application Verification
+
+Verified:
+
+- Frontend homepage returned HTTP 200.
+- Backend API returned HTTP 200.
+- Frontend Nginx successfully forwarded API requests to backend.
+- Backend health endpoint confirmed MongoDB connectivity.
+- Frontend, backend and MongoDB pods reached Running state.
+- Kubernetes Services and application communication worked successfully.
+
+### 11. Troubleshooting
+
+**Issue 1: Container image availability in Kind**
+
+Host Docker images and credentials were not automatically available inside Kind.
+
+Solution: Pulled ECR images, loaded them into Kind and used `IfNotPresent` image pull policy.
+
+**Issue 2: Metrics Server certificate verification**
+
+Metrics Server encountered kubelet certificate SAN verification errors in the Kind lab environment.
+
+Solution: Applied `--kubelet-insecure-tls` as a lab-only workaround.
+
+Note: Production environments should use properly trusted kubelet certificates.
+
+**Issue 3: HPA metrics unavailable**
+
+HPA requires resource metrics and configured CPU requests.
+
+Solution: Installed and verified Metrics Server and configured CPU requests for the backend.
+
+**Issue 4: Port-forward connection failure**
+
+Application tests failed when the required port-forward process was not running.
+
+Solution: Restarted the frontend/backend port-forward and repeated HTTP verification.
+
+### 12. Result
+
+Successfully deployed Rent-a-Ride on a single-node Kind Kubernetes cluster on AWS EC2.
+
+Configured Kubernetes Deployments, Services, persistent storage, resource requests and limits, health probes and HPA.
+
+Load testing completed with 2,000 requests and zero failed requests. HPA scaling from 1 to 2 replicas and back to 1 was successfully verified.
+
+This task demonstrated Kubernetes deployment, resource management, application health monitoring, service communication and automatic horizontal scaling.
+
+
+
+---
+
+
