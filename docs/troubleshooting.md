@@ -1669,3 +1669,92 @@ This task demonstrated Kubernetes deployment, resource management, application h
 ---
 
 
+
+---
+
+# Task 12: Kubernetes Deployment Troubleshooting
+
+## 1. Metrics Server Metrics Unavailable
+
+**Issue:** `kubectl top nodes` or `kubectl top pods` initially did not return resource metrics.
+
+**Solution:** Installed Metrics Server and used the following lab-only TLS workaround:
+
+```bash
+kubectl patch deployment metrics-server -n kube-system --type='json' \
+  -p='[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'
+```
+
+Verified using:
+
+```bash
+kubectl top nodes
+kubectl top pods -n rent-a-ride
+```
+
+**Note:** `--kubelet-insecure-tls` is only a lab workaround. Production environments should use properly configured kubelet certificates.
+
+## 2. Traefik Helm Service Configuration Error
+
+**Issue:** Helm rejected `service.type` because it was not an accepted chart value.
+
+**Solution:** Used the correct nested value:
+
+```bash
+--set service.spec.type=ClusterIP
+```
+
+## 3. Traefik Node Selector Type Error
+
+**Issue:** Kubernetes expected the node selector label value as a string, but Helm passed a boolean.
+
+**Solution:** Used `--set-string`:
+
+```bash
+--set-string nodeSelector.ingress-ready=true
+```
+
+## 4. HPA Metrics and Scaling
+
+**Issue:** HPA requires Metrics Server data before it can calculate CPU utilization.
+
+**Solution:** Verified Metrics Server and generated temporary CPU load inside backend pods.
+
+**Verification:**
+- Backend replicas scaled from 1 to 3.
+- Temporary load processes were stopped.
+- Replicas subsequently scaled back to 1.
+
+## 5. HPA Scale-Down Delay
+
+**Issue:** Replicas did not immediately decrease after CPU load stopped.
+
+**Reason:** HPA scale-down stabilization and scaling policies introduce a delay.
+
+**Solution:** Waited and monitored the HPA:
+
+```bash
+kubectl get hpa -n rent-a-ride --watch
+```
+
+## 6. Application and Ingress Verification
+
+**Issue:** Application routing needed verification through the Ingress Controller.
+
+**Solution:** Tested frontend, backend health and vehicles API:
+
+```bash
+curl -I http://localhost/
+curl -i http://localhost/health
+curl -i http://localhost/api/user/listAllVehicles
+```
+
+Public access was also verified:
+
+```bash
+curl -I http://13.201.99.13/
+curl -i http://13.201.99.13/health
+```
+
+**Result:** All tested endpoints returned HTTP 200 OK. Backend health confirmed MongoDB was connected.
+
