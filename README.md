@@ -20,6 +20,7 @@ The project is divided into two main parts:
 - [Deployment](#deployment)
 - [Screenshots](#screenshots)
 - [Docker Deployment](#docker-deployment)
+- [Helm Deployment](#helm-deployment)
 
 ## Project Overview
 
@@ -715,3 +716,18 @@ docker compose up -d
 The named MongoDB volume `rent-a-ride_mongodb_data` is retained when Compose is brought down without the `-v` option.
 
 **Important:** Do not use `docker compose down -v` for routine cleanup because it deletes the Compose-managed database volume.
+
+## Helm Deployment
+
+The application can be deployed to a Kubernetes Kind cluster using the reusable Helm chart in `helm/rent-a-ride/`.
+
+The deployment includes frontend, backend, MongoDB, Traefik Ingress, persistent storage and backend Horizontal Pod Autoscaling.
+
+See [Task 13 Helm Deployment Documentation](docs/task-13-helm.md) for installation, configuration, verification and troubleshooting.
+
+### Validate and Deploy
+
+```bash
+helm lint helm/rent-a-ride
+helm upgrade --install rent-a-ride helm/rent-a-ride --namespace rent-a-ride --create-namespace
+```
