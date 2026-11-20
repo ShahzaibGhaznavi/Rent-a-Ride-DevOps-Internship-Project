@@ -1,0 +1,6 @@
+apiVersion: v2
+name: rent-a-ride
+description: Helm chart for deploying the Rent-a-Ride application
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
