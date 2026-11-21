@@ -39,7 +39,7 @@ frontend:
   replicaCount: 1
   image:
     repository: 332730082659.dkr.ecr.ap-south-1.amazonaws.com/rent-a-ride-frontend
-    tag: task7-3
+    tag: task7-6
     pullPolicy: IfNotPresent
   containerPort: 8080
   servicePort: 80
