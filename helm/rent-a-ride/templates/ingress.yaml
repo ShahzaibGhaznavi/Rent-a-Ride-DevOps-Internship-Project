@@ -4,7 +4,10 @@ kind: Ingress
 metadata:
   name: rent-a-ride-ingress
   annotations:
-    {{- toYaml .Values.ingress.annotations | nindent 4 }}
+    gitops-test: "task14-verified"
+    {{ range $key, $value := .Values.ingress.annotations }}
+    {{ $key }}: {{ $value | quote }}
+    {{ end }}
 spec:
   ingressClassName: {{ .Values.ingress.className }}
   rules:

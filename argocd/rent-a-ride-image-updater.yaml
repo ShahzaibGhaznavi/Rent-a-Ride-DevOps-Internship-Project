@@ -1,0 +1,35 @@
+apiVersion: argocd-image-updater.argoproj.io/v1alpha1
+kind: ImageUpdater
+metadata:
+  name: rent-a-ride-updater
+  namespace: argocd
+spec:
+  writeBackConfig:
+    method: "git:secret:git-creds"
+    gitConfig:
+      repository: "https://github.com/ShahzaibGhaznavi/Rent-a-Ride-DevOps-Internship-Project.git"
+      branch: "feature/shahzaib-azeem"
+      writeBackTarget: "helmvalues:./values.yaml"
+
+  applicationRefs:
+    - namePattern: "rent-a-ride"
+      images:
+        - alias: backend
+          imageName: "332730082659.dkr.ecr.ap-south-1.amazonaws.com/rent-a-ride-backend:task9-1"
+          commonUpdateSettings:
+            updateStrategy: newest-build
+            allowTags: "regexp:^task[0-9]+(-[0-9]+)?$"
+          manifestTargets:
+            helm:
+              name: backend.image.repository
+              tag: backend.image.tag
+
+        - alias: frontend
+          imageName: "332730082659.dkr.ecr.ap-south-1.amazonaws.com/rent-a-ride-frontend:task7-3"
+          commonUpdateSettings:
+            updateStrategy: newest-build
+            allowTags: "regexp:^task[0-9]+(-[0-9]+)?$"
+          manifestTargets:
+            helm:
+              name: frontend.image.repository
+              tag: frontend.image.tag

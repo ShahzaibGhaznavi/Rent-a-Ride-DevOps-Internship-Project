@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: rent-a-ride
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/ShahzaibGhaznavi/Rent-a-Ride-DevOps-Internship-Project.git
+    targetRevision: feature/shahzaib-azeem
+    path: helm/rent-a-ride
+    helm:
+      releaseName: rent-a-ride
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: rent-a-ride
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
