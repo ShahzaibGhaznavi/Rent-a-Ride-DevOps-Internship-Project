@@ -18,7 +18,7 @@ backend:
   replicaCount: 1
   image:
     repository: 332730082659.dkr.ecr.ap-south-1.amazonaws.com/rent-a-ride-backend
-    tag: task9-1
+    tag: task14-1
     pullPolicy: IfNotPresent
   port: 3000
   existingSecret: backend-secrets
